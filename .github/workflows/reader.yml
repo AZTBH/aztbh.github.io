@@ -1,0 +1,57 @@
+
+name: Build and deploy website
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out public website repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check out private assets repository
+        uses: actions/checkout@v7
+        with:
+          repository: AZTBH/azsauce
+          ref: main
+          token: ${{ secrets.AZSTOKEN }}
+          path: private-assets
+          persist-credentials: false
+
+      - name: Assemble website files
+        run: |
+          mkdir -p dist
+          cp index.html dist/
+          cp -R private-assets/css private-assets/js private-assets/images dist/
+          touch dist/.nojekyll
+
+      - name: Upload website artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+          include-hidden-files: true
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
